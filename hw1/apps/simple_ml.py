@@ -33,7 +33,37 @@ def parse_mnist(image_filesname, label_filename):
                 for MNIST will contain the values 0-9.
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    with gzip.open(image_filesname, 'rb') as f:
+        # Read the magic number and number of images
+        magic, num_images = struct.unpack('>II', f.read(8))
+        if magic != 2051:
+            raise ValueError("Invalid magic number in image file")
+        # Read the dimensions of the images
+        num_rows, num_cols = struct.unpack('>II', f.read(8))
+        # Read the image data
+        data = np.frombuffer(f.read(), dtype=np.uint8)
+        X = data.reshape(num_images, num_rows * num_cols).astype(np.float32) / 255.0
+    with gzip.open(label_filename, 'rb') as f:
+        # Read the magic number and number of labels
+        magic, num_labels = struct.unpack('>II', f.read(8))
+        if magic != 2049:
+            raise ValueError("Invalid magic number in label file")
+        # Read the label data
+        data = np.frombuffer(f.read(), dtype=np.uint8)
+        y = data.reshape(num_labels).astype(np.uint8)
+    # Check that the number of images and labels match
+    if num_images != num_labels:
+        raise ValueError("Number of images does not match number of labels")
+    # Check that the number of rows and columns match the expected size
+    if num_rows != 28 or num_cols != 28:
+        raise ValueError("Expected image size of 28x28, but got {}x{}".format(num_rows, num_cols))
+    # Check that the data is in the expected range
+    if np.min(X) < 0.0 or np.max(X) > 1.0:
+        raise ValueError("Data values should be in the range [0.0, 1.0]")
+    # Check that the labels are in the expected range
+    if np.min(y) < 0 or np.max(y) > 9:
+        raise ValueError("Labels should be in the range [0, 9]")
+    return X, y
     ### END YOUR SOLUTION
 
 
@@ -54,7 +84,10 @@ def softmax_loss(Z, y_one_hot):
         Average softmax loss over the sample. (ndl.Tensor[np.float32])
     """
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    logSumExp = ndl.log(ndl.summation(ndl.exp(Z), axes=(1,)))
+    loss = logSumExp - ndl.summation(Z * y_one_hot, axes=(1,))
+    loss = ndl.summation(loss) / Z.shape[0]
+    return loss
     ### END YOUR SOLUTION
 
 
