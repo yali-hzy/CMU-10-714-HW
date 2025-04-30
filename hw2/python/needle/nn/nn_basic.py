@@ -232,7 +232,7 @@ class Dropout(Module):
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         if self.training:
-            mask = init.randb(*x.shape, p=1-self.p, dtype="bool") / (1 - self.p)
+            mask = init.randb(*x.shape, p=1-self.p, dtype=x.dtype) / (1 - self.p)
             return x * mask
         else:
             return x

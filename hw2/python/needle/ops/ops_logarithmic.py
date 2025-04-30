@@ -19,7 +19,7 @@ class LogSoftmax(TensorOp):
         ### BEGIN YOUR SOLUTION
         shape = list(node.inputs[0].shape)
         shape[-1] = 1
-        maxZ = Tensor(self.maxZ, requires_grad=False)
+        maxZ = Tensor(self.maxZ, requires_grad=False, dtype=node.inputs[0].dtype)
         shiftedZ = node.inputs[0] - maxZ
         expZ = exp(shiftedZ)
         sumExpZ = summation(expZ, axes=(-1,)).reshape(shape).broadcast_to(node.inputs[0].shape)
@@ -55,7 +55,7 @@ class LogSumExp(TensorOp):
                 shape[i] = 1
         out_grad = reshape(out_grad, shape)
         out_grad = broadcast_to(out_grad, node.inputs[0].shape)
-        maxZ = Tensor(self.maxZ, requires_grad=False)
+        maxZ = Tensor(self.maxZ, requires_grad=False, dtype=node.inputs[0].dtype)
         shiftedZ = node.inputs[0] - maxZ
         expZ = exp(shiftedZ)
         sumExpZ = summation(expZ, axes=self.axes).reshape(shape).broadcast_to(node.inputs[0].shape)

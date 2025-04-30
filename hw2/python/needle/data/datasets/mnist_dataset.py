@@ -17,11 +17,8 @@ class MNISTDataset(Dataset):
 
     def __getitem__(self, index) -> object:
         ### BEGIN YOUR SOLUTION
-        x = self.X[index]
+        x = self.apply_transforms(self.X[index])
         y = self.y[index]
-        if self.transforms is not None:
-            for transform in self.transforms:
-                x = transform(x)
         return x, y
         ### END YOUR SOLUTION
 
