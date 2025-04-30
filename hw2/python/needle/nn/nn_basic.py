@@ -103,8 +103,8 @@ class Linear(Module):
                     fan_out=1,
                     device=device,
                     dtype=dtype,
-                )
-            ).reshape((1, out_features))
+                ).reshape((1, out_features))
+            )
         else:
             self.bias = None
         ### END YOUR SOLUTION
@@ -175,11 +175,11 @@ class BatchNorm1d(Module):
         ### BEGIN YOUR SOLUTION
         observed_mean = ops.summation(x, axes=(0,)) / x.shape[0]
         observed_var = ops.summation((x - ops.broadcast_to(observed_mean, x.shape)) ** 2, axes=(0,)) / x.shape[0]
-        self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * observed_mean
-        self.running_var = (1 - self.momentum) * self.running_var + self.momentum * observed_var
         if self.training:
             mean = observed_mean
             var = observed_var
+            self.running_mean = (1 - self.momentum) * self.running_mean.data + self.momentum * observed_mean.data
+            self.running_var = (1 - self.momentum) * self.running_var.data + self.momentum * observed_var.data
         else:
             mean = self.running_mean
             var = self.running_var
