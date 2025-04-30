@@ -395,9 +395,9 @@ class NDArray:
         ### BEGIN YOUR SOLUTION
         new_shape = []
         new_strides = []
-        new_offset = self._offset
+        new_offset = 0
         for i, s in enumerate(idxs):
-            new_shape.append((s.stop - s.start) // s.step)
+            new_shape.append((s.stop - s.start + s.step - 1) // s.step)
             new_strides.append(self.strides[i] * s.step)
             new_offset += self.strides[i] * s.start
         new_shape = tuple(new_shape)

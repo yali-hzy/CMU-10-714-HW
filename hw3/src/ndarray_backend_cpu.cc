@@ -43,7 +43,38 @@ void Fill(AlignedArray* out, scalar_t val) {
   }
 }
 
-
+struct AlignedArrayIndex {
+  AlignedArrayIndex(std::vector<int32_t> shape, std::vector<int32_t> strides, size_t offset)
+      : shape(shape), strides(strides), indices(shape.size()), index(offset), cur_dim(shape.size() - 1) {}
+  operator size_t() const {
+    return index;
+  }
+  bool is_end() const {
+    return cur_dim < 0;
+  }
+  void next() {
+    index += strides[cur_dim];
+    indices[cur_dim]++;
+    if (indices[cur_dim] >= shape[cur_dim]) {
+      while (indices[cur_dim] >= shape[cur_dim]) {
+        index -= strides[cur_dim] * shape[cur_dim];
+        indices[cur_dim] = 0;
+        cur_dim--;
+        if (is_end())
+          return;
+        index += strides[cur_dim];
+        indices[cur_dim]++;
+      }
+      cur_dim = shape.size() - 1;
+    }
+  }
+private:
+  std::vector<int32_t> shape;
+  std::vector<int32_t> strides;
+  std::vector<int32_t> indices;
+  size_t index;
+  int cur_dim;
+};
 
 void Compact(const AlignedArray& a, AlignedArray* out, std::vector<int32_t> shape,
              std::vector<int32_t> strides, size_t offset) {
@@ -62,7 +93,12 @@ void Compact(const AlignedArray& a, AlignedArray* out, std::vector<int32_t> shap
    *  function will implement here, so we won't repeat this note.)
    */
   /// BEGIN SOLUTION
-  assert(false && "Not Implemented");
+  size_t cnt = 0;
+  AlignedArrayIndex index(shape, strides, offset);
+  while (!index.is_end()) {
+    out->ptr[cnt++] = a.ptr[index];
+    index.next();
+  }
   /// END SOLUTION
 }
 
@@ -79,7 +115,12 @@ void EwiseSetitem(const AlignedArray& a, AlignedArray* out, std::vector<int32_t>
    *   offset: offset of the *out* array (not a, which has zero offset, being compact)
    */
   /// BEGIN SOLUTION
-  assert(false && "Not Implemented");
+  size_t cnt = 0;
+  AlignedArrayIndex index(shape, strides, offset);
+  while (!index.is_end()) {
+    out->ptr[index] = a.ptr[cnt++];
+    index.next();
+  }
   /// END SOLUTION
 }
 
@@ -100,7 +141,11 @@ void ScalarSetitem(const size_t size, scalar_t val, AlignedArray* out, std::vect
    */
 
   /// BEGIN SOLUTION
-  assert(false && "Not Implemented");
+  AlignedArrayIndex index(shape, strides, offset);
+  for (size_t i = 0; i < size; i++) {
+    out->ptr[index] = val;
+    index.next();
+  }
   /// END SOLUTION
 }
 
