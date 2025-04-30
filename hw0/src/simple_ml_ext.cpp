@@ -33,7 +33,43 @@ void softmax_regression_epoch_cpp(const float *X, const unsigned char *y,
      */
 
     /// BEGIN YOUR CODE
-
+    // Allocate memory for logits and gradients
+    float *logits = new float[k];
+    float *gradients = new float[n * k];
+    float *z = new float[k];
+    for(size_t i = 0; i < m; i += batch) {
+        size_t batch_size = std::min(batch, m - i);
+        std::fill(gradients, gradients + n * k, 0.0f);
+        for (size_t j = 0; j < batch_size; ++j) {
+            // Compute logits
+            for (size_t c = 0; c < k; ++c) {
+                logits[c] = 0.0f;
+                for (size_t d = 0; d < n; ++d)
+                    logits[c] += X[(i + j) * n + d] * theta[d * k + c];
+            }
+            // Compute gradients
+            float sum = 0.0f;
+            for (size_t c = 0; c < k; ++c) {
+                z[c] = std::exp(logits[c]);
+                sum += z[c];
+            }
+            for (size_t c = 0; c < k; ++c)
+                z[c] /= sum;
+            for (size_t d = 0; d < n; ++d)
+                for (size_t c = 0; c < k; ++c)
+                    gradients[d * k + c] += X[(i + j) * n + d] * (z[c] - (y[i + j] == c));
+        }
+        // Update theta
+        for (size_t d = 0; d < n; ++d)
+            for (size_t c = 0; c < k; ++c) {
+                gradients[d * k + c] /= batch_size;
+                theta[d * k + c] -= lr * gradients[d * k + c];
+            }
+    }
+    // Clean up
+    delete[] logits;
+    delete[] gradients;
+    delete[] z;
     /// END YOUR CODE
 }
 
