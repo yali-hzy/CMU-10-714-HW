@@ -121,7 +121,23 @@ def softmax_regression_epoch(X, y, theta, lr = 0.1, batch=100):
         None
     """
     ### BEGIN YOUR CODE
-    pass
+    for i in range(0, X.shape[0], batch):
+        # Get the current batch
+        X_batch = X[i:i+batch]
+        y_batch = y[i:i+batch]
+
+        m = X_batch.shape[0]
+
+        # Compute the logits
+        logits = X_batch @ theta
+        # Compute the softmax loss
+        loss = softmax_loss(logits, y_batch)
+        
+        Z = np.exp(logits) / np.sum(np.exp(logits), axis=1, keepdims=True)
+        # Compute the gradient
+        grad = X_batch.T @ (Z - np.eye(theta.shape[1])[y_batch]) / m
+        # Update the parameters
+        theta -= lr * grad
     ### END YOUR CODE
 
 
