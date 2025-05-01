@@ -43,6 +43,17 @@ CudaDims CudaOneDim(size_t size) {
   return dim;
 }
 
+CudaDims CudaTwoDim(size_t m, size_t p) {
+  /**
+   * Utility function to get cuda dimensions for 2D call
+   */
+  CudaDims dim;
+  dim.block = dim3(16, 16, 1);
+  dim.grid = dim3((m + dim.block.x * TILE - 1) / (dim.block.x * TILE),
+                  (p + dim.block.y * TILE - 1) / (dim.block.y * TILE), 1);
+  return dim;
+}
+
 #define MAX_VEC_SIZE 8
 struct CudaVec {
   uint32_t size;
@@ -415,6 +426,62 @@ void EwiseTanh(const CudaArray& a, CudaArray* out) {
 ////////////////////////////////////////////////////////////////////////////////
 // Elementwise and scalar operations
 ////////////////////////////////////////////////////////////////////////////////
+__global__ void MatmulKernel(const scalar_t* A, const scalar_t* B, scalar_t* out, uint32_t M,
+                            uint32_t N, uint32_t P) {
+#define L 64
+#define S 64
+  __shared__ scalar_t sA[L][S], sB[S][L];
+  scalar_t c[TILE][TILE] = {0};
+  scalar_t a[TILE], b[TILE];
+  int yblock = blockIdx.y;
+  int xblock = blockIdx.x;
+
+  for (int k0 = 0; k0 < N; k0 += S) {
+    __syncthreads();
+    int nthreads = blockDim.y * blockDim.x;
+    int tid = threadIdx.y * blockDim.x + threadIdx.x;
+
+    for (int idx = tid; idx < L * S; idx += nthreads) {
+      int row = idx / S;
+      int col = idx % S;
+      int a_row = yblock * L + row;
+      int a_col = k0 + col;
+      if (a_row < M && a_col < N)
+        sA[row][col] = A[a_row * N + a_col];
+      else
+        sA[row][col] = 0;
+    }
+
+    for (int idx = tid; idx < S * L; idx += nthreads) {
+      int row = idx / L;
+      int col = idx % L;
+      int b_row = k0 + row;
+      int b_col = xblock * L + col;
+      if (b_row < N && b_col < P)
+        sB[row][col] = B[b_row * P + b_col];
+      else
+        sB[row][col] = 0;
+    }
+    __syncthreads();
+    for (int ki = 0; ki < S; ++ki) {
+      for (int j = 0; j < TILE; ++j) {
+        a[j] = sA[threadIdx.y * TILE + j][ki];
+        b[j] = sB[ki][threadIdx.x * TILE + j];
+      }
+      for (int y = 0; y < TILE; ++y)
+        for (int x = 0; x < TILE; ++x)
+          c[y][x] += a[y] * b[x];
+    }
+  }
+  int ybase = blockIdx.y * blockDim.y + threadIdx.y;
+  int xbase = blockIdx.x * blockDim.x + threadIdx.x;
+  for (int i = 0; i < TILE; i++)
+    for (int j = 0; j < TILE; j++)
+      if (ybase * TILE + i < M && xbase * TILE + j < P)
+        out[(ybase * TILE + i) * P + (xbase * TILE + j)] = c[i][j];
+#undef L
+#undef S
+}
 
 
 void Matmul(const CudaArray& a, const CudaArray& b, CudaArray* out, uint32_t M, uint32_t N,
@@ -442,7 +509,8 @@ void Matmul(const CudaArray& a, const CudaArray& b, CudaArray* out, uint32_t M, 
    */
 
   /// BEGIN SOLUTION
-  assert(false && "Not Implemented");
+  CudaDims dim = CudaTwoDim(M, P);
+  MatmulKernel<<<dim.grid, dim.block>>>(a.ptr, b.ptr, out->ptr, M, N, P);
   /// END SOLUTION
 }
 
@@ -570,7 +638,7 @@ PYBIND11_MODULE(ndarray_backend_cuda, m) {
   m.def("ewise_exp", EwiseExp);
   m.def("ewise_tanh", EwiseTanh);
 
-  // m.def("matmul", Matmul);
+  m.def("matmul", Matmul);
 
   m.def("reduce_max", ReduceMax);
   m.def("reduce_sum", ReduceSum);
