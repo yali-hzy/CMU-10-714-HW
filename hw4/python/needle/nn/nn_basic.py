@@ -1,5 +1,5 @@
-"""The module.
-"""
+"""The module."""
+
 from typing import List, Callable, Any
 from needle.autograd import Tensor
 from needle import ops
@@ -122,7 +122,10 @@ class Linear(Module):
 class Flatten(Module):
     def forward(self, X):
         ### BEGIN YOUR SOLUTION
-        return ops.reshape(X, (X.shape[0], -1))
+        size = 1
+        for i in range(1, len(X.shape)):
+            size *= X.shape[i]
+        return X.reshape((X.shape[0], size))
         ### END YOUR SOLUTION
 
 
@@ -131,6 +134,7 @@ class ReLU(Module):
         ### BEGIN YOUR SOLUTION
         return ops.relu(x)
         ### END YOUR SOLUTION
+
 
 class Sequential(Module):
     def __init__(self, *modules):
@@ -148,7 +152,7 @@ class Sequential(Module):
 class SoftmaxLoss(Module):
     def forward(self, logits: Tensor, y: Tensor):
         ### BEGIN YOUR SOLUTION
-        y_onehot = init.one_hot(logits.shape[1], y, dtype=logits.dtype)
+        y_onehot = init.one_hot(logits.shape[1], y, device=logits.device, dtype=logits.dtype)
         loss = ops.logsumexp(logits, axes=(1,)) - ops.summation(
             logits * y_onehot, axes=(1,)
         )
@@ -164,33 +168,45 @@ class BatchNorm1d(Module):
         self.eps = eps
         self.momentum = momentum
         ### BEGIN YOUR SOLUTION
-        self.weight = Parameter(init.ones(dim, device=device, dtype=dtype))
-        self.bias = Parameter(init.zeros(dim, device=device, dtype=dtype))
-        self.running_mean = init.zeros(dim, device=device, dtype=dtype)
-        self.running_var = init.ones(dim, device=device, dtype=dtype)
+        self.weight = Parameter(init.ones(1, dim, device=device, dtype=dtype))
+        self.bias = Parameter(init.zeros(1, dim, device=device, dtype=dtype))
+        self.running_mean = init.zeros(1, dim, device=device, dtype=dtype)
+        self.running_var = init.ones(1, dim, device=device, dtype=dtype)
         ### END YOUR SOLUTION
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        observed_mean = ops.summation(x, axes=(0,)) / x.shape[0]
-        observed_var = ops.summation((x - ops.broadcast_to(observed_mean, x.shape)) ** 2, axes=(0,)) / x.shape[0]
+        observed_mean = (
+            ops.summation(x, axes=(0,)).reshape((1, x.shape[1])) / x.shape[0]
+        )
+        observed_var = (
+            ops.summation(
+                (x - ops.broadcast_to(observed_mean, x.shape)) ** 2, axes=(0,)
+            ).reshape((1, x.shape[1]))
+            / x.shape[0]
+        )
         if self.training:
             mean = observed_mean
             var = observed_var
-            self.running_mean = (1 - self.momentum) * self.running_mean.data + self.momentum * observed_mean.data
-            self.running_var = (1 - self.momentum) * self.running_var.data + self.momentum * observed_var.data
+            self.running_mean = (
+                1 - self.momentum
+            ) * self.running_mean.data + self.momentum * observed_mean.data
+            self.running_var = (
+                1 - self.momentum
+            ) * self.running_var.data + self.momentum * observed_var.data
         else:
             mean = self.running_mean
             var = self.running_var
-        mean = ops.reshape(mean, (1, x.shape[1]))
-        var = ops.reshape(var, (1, x.shape[1]))
         y = self.weight.broadcast_to(x.shape) * (
             x - ops.broadcast_to(mean, x.shape)
         ) / ops.broadcast_to(
             ((var + self.eps) ** 0.5), x.shape
-        ) + self.bias.broadcast_to(x.shape)
+        ) + self.bias.broadcast_to(
+            x.shape
+        )
         return y
         ### END YOUR SOLUTION
+
 
 class BatchNorm2d(BatchNorm1d):
     def __init__(self, *args, **kwargs):
@@ -201,7 +217,7 @@ class BatchNorm2d(BatchNorm1d):
         s = x.shape
         _x = x.transpose((1, 2)).transpose((2, 3)).reshape((s[0] * s[2] * s[3], s[1]))
         y = super().forward(_x).reshape((s[0], s[2], s[3], s[1]))
-        return y.transpose((2,3)).transpose((1,2))
+        return y.transpose((2, 3)).transpose((1, 2))
 
 
 class LayerNorm1d(Module):
@@ -241,7 +257,7 @@ class Dropout(Module):
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
         if self.training:
-            mask = init.randb(*x.shape, p=1-self.p, dtype=x.dtype) / (1 - self.p)
+            mask = init.randb(*x.shape, p=1 - self.p, dtype=x.dtype) / (1 - self.p)
             return x * mask
         else:
             return x

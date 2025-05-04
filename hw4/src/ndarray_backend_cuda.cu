@@ -49,8 +49,8 @@ CudaDims CudaTwoDim(size_t m, size_t p) {
    */
   CudaDims dim;
   dim.block = dim3(16, 16, 1);
-  dim.grid = dim3((m + dim.block.x * TILE - 1) / (dim.block.x * TILE),
-                  (p + dim.block.y * TILE - 1) / (dim.block.y * TILE), 1);
+  dim.grid = dim3((p + dim.block.x * TILE - 1) / (dim.block.x * TILE),
+                  (m + dim.block.y * TILE - 1) / (dim.block.y * TILE), 1);
   return dim;
 }
 
@@ -441,9 +441,9 @@ __global__ void MatmulKernel(const scalar_t* A, const scalar_t* B, scalar_t* out
     int nthreads = blockDim.y * blockDim.x;
     int tid = threadIdx.y * blockDim.x + threadIdx.x;
 
-    for (int idx = tid; idx < L * S; idx += nthreads) {
-      int row = idx / S;
-      int col = idx % S;
+    for (int idx = 0; idx < L * S; idx += nthreads) {
+      int row = (idx + tid) / S;
+      int col = (idx + tid) % S;
       int a_row = yblock * L + row;
       int a_col = k0 + col;
       if (a_row < M && a_col < N)
@@ -452,9 +452,9 @@ __global__ void MatmulKernel(const scalar_t* A, const scalar_t* B, scalar_t* out
         sA[row][col] = 0;
     }
 
-    for (int idx = tid; idx < S * L; idx += nthreads) {
-      int row = idx / L;
-      int col = idx % L;
+    for (int idx = 0; idx < S * L; idx += nthreads) {
+      int row = (idx + tid) / L;
+      int col = (idx + tid) % L;
       int b_row = k0 + row;
       int b_col = xblock * L + col;
       if (b_row < N && b_col < P)
