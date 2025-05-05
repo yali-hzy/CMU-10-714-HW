@@ -75,6 +75,6 @@ class DataLoader:
         batch_indices = self.ordering[self.current_batch]
         self.current_batch += 1
         batch = self.dataset[batch_indices]
-        return batch
+        return [Tensor(x, requires_grad=False) for x in batch]
         ### END YOUR SOLUTION
 
