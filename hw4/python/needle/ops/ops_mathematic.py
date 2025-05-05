@@ -441,13 +441,9 @@ class Split(TensorTupleOp):
             slices = [slice(None)] * len(shape)
             slices[self.axis] = i
             split_tensors.append(
-                Tensor(
-                    A[tuple(slices)],
-                    device=A.device,
-                    dtype=A.dtype,
-                ).reshape(new_shape)
+                A[tuple(slices)].compact().reshape(tuple(new_shape)),
             )
-        return make_tuple(*split_tensors)
+        return tuple(split_tensors)
         ### END YOUR SOLUTION
 
     def gradient(self, out_grad, node):
