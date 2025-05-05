@@ -11,6 +11,8 @@ class ResNet9(ndl.nn.Module):
     def __init__(self, device=None, dtype="float32"):
         super().__init__()
         ### BEGIN YOUR SOLUTION ###
+        self.device = device
+        self.dtype = dtype
         self.model = nn.Sequential(
             nn.ConvBN(3, 16, 7, 4, device=device, dtype=dtype),
             nn.ConvBN(16, 32, 3, 2, device=device, dtype=dtype),

@@ -60,7 +60,9 @@ def epoch(dataloader, model, opt=None):
     tot_loss = 0.0
     tot_err = 0.0
     for X, y in dataloader:
-        logits = model(X.reshape((X.shape[0], -1)))
+        X = ndl.Tensor(X.reshape((X.shape[0], -1)), requires_grad=False)
+        y = ndl.Tensor(y, requires_grad=False)
+        logits = model(X)
         loss = nn.SoftmaxLoss()(logits, y)
         pred = np.argmax(logits.numpy(), axis=1)
         tot_err += (pred != y.numpy()).sum()

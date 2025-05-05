@@ -110,7 +110,25 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    tot_acc = 0
+    tot_loss = 0
+    if opt is not None:
+        model.train()
+    else:
+        model.eval()
+    for X, y in dataloader:
+        X = ndl.Tensor(X, device=model.device, dtype=model.dtype, requires_grad=False)
+        y = ndl.Tensor(y, device=model.device, dtype=model.dtype, requires_grad=False)
+        h = model(X)
+        loss = loss_fn()(h, y)
+        tot_loss += loss.numpy() * X.shape[0]
+        tot_acc += np.sum(np.argmax(h.numpy(), axis=1) == y.numpy())
+        if opt is not None:
+            loss.backward()
+            opt.step()
+    avg_loss = tot_loss / len(dataloader.dataset)
+    avg_acc = tot_acc / len(dataloader.dataset)
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
@@ -134,7 +152,12 @@ def train_cifar10(model, dataloader, n_epochs=1, optimizer=ndl.optim.Adam,
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
+    for epoch in range(n_epochs):
+        print(f"Epoch {epoch + 1}/{n_epochs}")
+        avg_acc, avg_loss = epoch_general_cifar10(dataloader, model, loss_fn=loss_fn, opt=opt)
+        print(f"Train - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
@@ -153,7 +176,9 @@ def evaluate_cifar10(model, dataloader, loss_fn=nn.SoftmaxLoss):
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    avg_acc, avg_loss = epoch_general_cifar10(dataloader, model, loss_fn=loss_fn)
+    print(f"Test - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
