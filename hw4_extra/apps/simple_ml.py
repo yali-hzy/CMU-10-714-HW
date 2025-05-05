@@ -12,7 +12,9 @@ import needle as ndl
 import needle.nn as nn
 from apps.models import *
 import time
+
 device = ndl.cpu()
+
 
 def parse_mnist(image_filesname, label_filename):
     """Read an images and labels file in MNIST format.  See this page:
@@ -90,6 +92,7 @@ def nn_epoch(X, y, W1, W2, lr=0.1, batch=100):
     raise NotImplementedError()
     ### END YOUR SOLUTION
 
+
 ### CIFAR-10 training ###
 def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None):
     """
@@ -110,12 +113,37 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    tot_acc = 0
+    tot_loss = 0
+    if opt is not None:
+        model.train()
+    else:
+        model.eval()
+    for X, y in dataloader:
+        X = ndl.Tensor(X, device=model.device, dtype=model.dtype, requires_grad=False)
+        y = ndl.Tensor(y, device=model.device, dtype=model.dtype, requires_grad=False)
+        h = model(X)
+        loss = loss_fn()(h, y)
+        tot_loss += loss.numpy() * X.shape[0]
+        tot_acc += np.sum(np.argmax(h.numpy(), axis=1) == y.numpy())
+        if opt is not None:
+            loss.backward()
+            opt.step()
+    avg_loss = tot_loss / len(dataloader.dataset)
+    avg_acc = tot_acc / len(dataloader.dataset)
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
-def train_cifar10(model, dataloader, n_epochs=1, optimizer=ndl.optim.Adam,
-          lr=0.001, weight_decay=0.001, loss_fn=nn.SoftmaxLoss):
+def train_cifar10(
+    model,
+    dataloader,
+    n_epochs=1,
+    optimizer=ndl.optim.Adam,
+    lr=0.001,
+    weight_decay=0.001,
+    loss_fn=nn.SoftmaxLoss,
+):
     """
     Performs {n_epochs} epochs of training.
 
@@ -134,7 +162,14 @@ def train_cifar10(model, dataloader, n_epochs=1, optimizer=ndl.optim.Adam,
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
+    for epoch in range(n_epochs):
+        print(f"Epoch {epoch + 1}/{n_epochs}")
+        avg_acc, avg_loss = epoch_general_cifar10(
+            dataloader, model, loss_fn=loss_fn, opt=opt
+        )
+        print(f"Train - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
@@ -153,13 +188,23 @@ def evaluate_cifar10(model, dataloader, loss_fn=nn.SoftmaxLoss):
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    avg_acc, avg_loss = epoch_general_cifar10(dataloader, model, loss_fn=loss_fn)
+    print(f"Test - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
 ### PTB training ###
-def epoch_general_ptb(data, model, seq_len=40, loss_fn=nn.SoftmaxLoss(), opt=None,
-        clip=None, device=None, dtype="float32"):
+def epoch_general_ptb(
+    data,
+    model,
+    seq_len=40,
+    loss_fn=nn.SoftmaxLoss(),
+    opt=None,
+    clip=None,
+    device=None,
+    dtype="float32",
+):
     """
     Iterates over the data. If optimizer is not None, sets the
     model to train mode, and for each batch updates the model parameters.
@@ -180,13 +225,42 @@ def epoch_general_ptb(data, model, seq_len=40, loss_fn=nn.SoftmaxLoss(), opt=Non
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    tot_acc = 0
+    tot_loss = 0
+    if opt is not None:
+        model.train()
+    else:
+        model.eval()
+    for i in range(0, data.shape[0] - seq_len, seq_len):
+        X, y = ndl.data.get_batch(data, i, seq_len, device=device, dtype=dtype)
+        out, h = model(X)
+        loss = loss_fn()(out, y)
+        tot_loss += loss.numpy() * X.shape[0]
+        tot_acc += np.sum(np.argmax(out.numpy(), axis=1) == y.numpy())
+        if opt is not None:
+            loss.backward()
+            if clip is not None:
+                nn.utils.clip_grad_norm_(model.parameters(), clip)
+            opt.step()
+    avg_loss = tot_loss / len(data)
+    avg_acc = tot_acc / len(data)
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
 
-def train_ptb(model, data, seq_len=40, n_epochs=1, optimizer=ndl.optim.SGD,
-          lr=4.0, weight_decay=0.0, loss_fn=nn.SoftmaxLoss, clip=None,
-          device=None, dtype="float32"):
+def train_ptb(
+    model,
+    data,
+    seq_len=40,
+    n_epochs=1,
+    optimizer=ndl.optim.SGD,
+    lr=4.0,
+    weight_decay=0.0,
+    loss_fn=nn.SoftmaxLoss,
+    clip=None,
+    device=None,
+    dtype="float32",
+):
     """
     Performs {n_epochs} epochs of training.
 
@@ -207,11 +281,27 @@ def train_ptb(model, data, seq_len=40, n_epochs=1, optimizer=ndl.optim.SGD,
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    opt = optimizer(model.parameters(), lr=lr, weight_decay=weight_decay)
+    for epoch in range(n_epochs):
+        print(f"Epoch {epoch + 1}/{n_epochs}")
+        avg_acc, avg_loss = epoch_general_ptb(
+            data,
+            model,
+            seq_len=seq_len,
+            loss_fn=loss_fn,
+            opt=opt,
+            clip=clip,
+            device=device,
+            dtype=dtype,
+        )
+        print(f"Train - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
 
-def evaluate_ptb(model, data, seq_len=40, loss_fn=nn.SoftmaxLoss,
-        device=None, dtype="float32"):
+
+def evaluate_ptb(
+    model, data, seq_len=40, loss_fn=nn.SoftmaxLoss, device=None, dtype="float32"
+):
     """
     Computes the test accuracy and loss of the model.
 
@@ -227,8 +317,13 @@ def evaluate_ptb(model, data, seq_len=40, loss_fn=nn.SoftmaxLoss,
     """
     np.random.seed(4)
     ### BEGIN YOUR SOLUTION
-    raise NotImplementedError()
+    avg_acc, avg_loss = epoch_general_ptb(
+        data, model, seq_len=seq_len, loss_fn=loss_fn, device=device, dtype=dtype
+    )
+    print(f"Test - Loss: {avg_loss:.4f} - Acc: {avg_acc:.4f}")
+    return avg_acc, avg_loss
     ### END YOUR SOLUTION
+
 
 ### CODE BELOW IS FOR ILLUSTRATION, YOU DO NOT NEED TO EDIT
 
