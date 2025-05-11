@@ -247,11 +247,10 @@ class LayerNorm1d(Module):
         Var = ((x - E.broadcast_to(x.shape)) ** 2).sum(axes=(1,)).reshape(
             (row, 1)
         ) / x.shape[1]
-        para_shape = (1,) * (len(x_shape) - 1) + (x_shape[-1],)
-        y = self.weight.reshape(para_shape).broadcast_to(x.shape) * (
+        y = self.weight.reshape((1, self.dim)).broadcast_to(x.shape) * (
             x - E.broadcast_to(x.shape)
         ) / ((Var + self.eps) ** 0.5).broadcast_to(x.shape) + self.bias.reshape(
-            para_shape
+            (1, self.dim)
         ).broadcast_to(
             x.shape
         )
