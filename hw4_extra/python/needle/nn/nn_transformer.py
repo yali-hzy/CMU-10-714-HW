@@ -5,7 +5,16 @@ from needle import ops
 import needle.init as init
 import numpy as np
 from .nn_sequence import Embedding
-from .nn_basic import Parameter, Module, ReLU, Dropout, LayerNorm1d, Linear, Sequential
+from .nn_basic import (
+    Parameter,
+    Module,
+    ReLU,
+    Dropout,
+    LayerNorm1d,
+    Linear,
+    Sequential,
+    Residual,
+)
 
 
 class MultiHeadAttention(Module):
@@ -207,12 +216,20 @@ class AttentionLayer(Module):
         k = self.k_projection(self.prenorm_k(k))
         v = self.v_projection(self.prenorm_v(v))
 
-        q = q.reshape((batch_size, queries_len, self.num_head, self.dim_head)).transpose((1, 2))
-        k = k.reshape((batch_size, keys_values_len, self.num_head, self.dim_head)).transpose((1, 2))
-        v = v.reshape((batch_size, keys_values_len, self.num_head, self.dim_head)).transpose((1, 2))
+        q = q.reshape(
+            (batch_size, queries_len, self.num_head, self.dim_head)
+        ).transpose((1, 2))
+        k = k.reshape(
+            (batch_size, keys_values_len, self.num_head, self.dim_head)
+        ).transpose((1, 2))
+        v = v.reshape(
+            (batch_size, keys_values_len, self.num_head, self.dim_head)
+        ).transpose((1, 2))
 
         x, self.probs = self.attn(q, k, v)
-        x = x.transpose((1, 2)).reshape((batch_size, queries_len, self.num_head * self.dim_head))
+        x = x.transpose((1, 2)).reshape(
+            (batch_size, queries_len, self.num_head * self.dim_head)
+        )
 
         result = self.out_projection(x)
         ### END YOUR SOLUTION
@@ -241,7 +258,31 @@ class TransformerLayer(Module):
         self.dtype = dtype
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        self.dropout = Dropout(dropout)
+        self.attention = Sequential(
+            AttentionLayer(
+                q_features=q_features,
+                num_head=num_head,
+                dim_head=dim_head,
+                dropout=dropout,
+                causal=causal,
+                device=device,
+                dtype=dtype,
+            ),
+            self.dropout,
+        )
+        self.ffn = Sequential(
+            LayerNorm1d(q_features, device=device, dtype=dtype),
+            Linear(q_features, hidden_size, device=device, dtype=dtype),
+            ReLU(),
+            self.dropout,
+            Linear(hidden_size, q_features, device=device, dtype=dtype),
+            self.dropout,
+        )
+        self.model = Sequential(
+            Residual(self.attention),
+            Residual(self.ffn),
+        )
         ### END YOUR SOLUTION
 
     def forward(self, x):
@@ -254,7 +295,7 @@ class TransformerLayer(Module):
         batch_size, seq_len, x_dim = x.shape
 
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        x = self.model(x)
         ### END YOUR SOLUTION
 
         return x
