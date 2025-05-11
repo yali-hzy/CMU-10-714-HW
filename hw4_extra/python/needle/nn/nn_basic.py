@@ -111,11 +111,15 @@ class Linear(Module):
 
     def forward(self, X: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        XA = ops.matmul(X, self.weight)
+        X_shape = X.shape
+        row = 1
+        for s in X.shape[:-1]:
+            row *= s
+        X = X.reshape((row, self.in_features))
+        XA = X @ self.weight
         if self.bias is not None:
-            return XA + ops.broadcast_to(self.bias, XA.shape)
-        else:
-            return XA
+            XA += self.bias.broadcast_to(XA.shape)
+        return XA.reshape(X_shape[:-1] + (self.out_features,))
         ### END YOUR SOLUTION
 
 
@@ -234,20 +238,24 @@ class LayerNorm1d(Module):
 
     def forward(self, x: Tensor) -> Tensor:
         ### BEGIN YOUR SOLUTION
-        E = ops.reshape(ops.summation(x, axes=(1,)) / x.shape[1], (x.shape[0], 1))
-        Var = ops.reshape(
-            ops.summation((x - ops.broadcast_to(E, x.shape)) ** 2, axes=(1,))
-            / x.shape[1],
-            (x.shape[0], 1),
-        )
-        y = self.weight.broadcast_to(x.shape) * (
-            x - ops.broadcast_to(E, x.shape)
-        ) / ops.broadcast_to(
-            ((Var + self.eps) ** 0.5), x.shape
-        ) + self.bias.broadcast_to(
+        x_shape = x.shape
+        row = 1
+        for s in x_shape[:-1]:
+            row *= s
+        x = x.reshape((row, x_shape[-1]))
+        E = (x.sum(axes=(1,)) / x.shape[1]).reshape((row, 1))
+        Var = ((x - E.broadcast_to(x.shape)) ** 2).sum(axes=(1,)).reshape(
+            (row, 1)
+        ) / x.shape[1]
+        para_shape = (1,) * (len(x_shape) - 1) + (x_shape[-1],)
+        y = self.weight.reshape(para_shape).broadcast_to(x.shape) * (
+            x - E.broadcast_to(x.shape)
+        ) / ((Var + self.eps) ** 0.5).broadcast_to(x.shape) + self.bias.reshape(
+            para_shape
+        ).broadcast_to(
             x.shape
         )
-        return y
+        return y.reshape(x_shape)
         ### END YOUR SOLUTION
 
 
