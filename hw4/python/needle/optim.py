@@ -39,7 +39,13 @@ class SGD(Optimizer):
         Clips gradient norm of parameters.
         """
         ### BEGIN YOUR SOLUTION
-        raise NotImplementedError()
+        for theta in self.params:
+            if theta.grad is not None:
+                grad = theta.grad.data
+                norm = np.sqrt(np.sum(grad.numpy() ** 2))
+                if norm > max_norm:
+                    grad *= max_norm / norm
+                theta.grad.data = grad
         ### END YOUR SOLUTION
 
 

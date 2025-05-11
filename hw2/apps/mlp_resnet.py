@@ -42,7 +42,7 @@ def MLPResNet(
         nn.Linear(dim, hidden_dim),
         nn.ReLU(),
         *[
-            ResidualBlock(hidden_dim, hidden_dim//2, norm, drop_prob)
+            ResidualBlock(hidden_dim, hidden_dim // 2, norm, drop_prob)
             for _ in range(num_blocks)
         ],
         nn.Linear(hidden_dim, num_classes),
@@ -60,6 +60,8 @@ def epoch(dataloader, model, opt=None):
     tot_loss = 0.0
     tot_err = 0.0
     for X, y in dataloader:
+        if opt is not None:
+            opt.reset_grad()
         X = ndl.Tensor(X.reshape((X.shape[0], -1)), requires_grad=False)
         y = ndl.Tensor(y, requires_grad=False)
         logits = model(X)

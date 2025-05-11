@@ -120,6 +120,8 @@ def epoch_general_cifar10(dataloader, model, loss_fn=nn.SoftmaxLoss(), opt=None)
     else:
         model.eval()
     for X, y in dataloader:
+        if opt is not None:
+            opt.reset_grad()
         X = ndl.Tensor(X, device=model.device, dtype=model.dtype, requires_grad=False)
         y = ndl.Tensor(y, device=model.device, dtype=model.dtype, requires_grad=False)
         h = model(X)
@@ -232,6 +234,8 @@ def epoch_general_ptb(
     else:
         model.eval()
     for i in range(0, data.shape[0] - seq_len, seq_len):
+        if opt is not None:
+            opt.reset_grad()
         X, y = ndl.data.get_batch(data, i, seq_len, device=device, dtype=dtype)
         out, h = model(X)
         loss = loss_fn()(out, y)
@@ -240,7 +244,7 @@ def epoch_general_ptb(
         if opt is not None:
             loss.backward()
             if clip is not None:
-                nn.utils.clip_grad_norm_(model.parameters(), clip)
+                opt.clip_grad_norm(clip)
             opt.step()
     avg_loss = tot_loss / len(data)
     avg_acc = tot_acc / len(data)
